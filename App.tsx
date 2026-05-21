@@ -32,6 +32,8 @@ const App = () => {
   const pcRef = useRef(null);
   const streamRef = useRef(null);
 
+  const codeRef = useRef('');
+
   useEffect(() => {
     // Inicializa o Socket.io
     socketRef.current = io(SERVER_URL);
@@ -42,6 +44,7 @@ const App = () => {
 
     socketRef.current.on('host-code-generated', (newCode) => {
       setCode(newCode);
+      codeRef.current = newCode;
       setStatus('Aguardando suporte remoto...');
     });
 
@@ -58,7 +61,7 @@ const App = () => {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(signal));
           const answer = await pcRef.current.createAnswer();
           await pcRef.current.setLocalDescription(answer);
-          socketRef.current.emit('webrtc-signal', { code, signal: answer });
+          socketRef.current.emit('webrtc-signal', { code: codeRef.current, signal: answer });
         } else if (signal.type === 'answer') {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(signal));
         } else if (signal.candidate) {
@@ -72,7 +75,7 @@ const App = () => {
     return () => {
       socketRef.current.disconnect();
     };
-  }, [code]);
+  }, []);
 
   const requestAccessibility = async () => {
     // Redireciona o usuário para ativar a Acessibilidade no Android
@@ -131,14 +134,14 @@ const App = () => {
       // Envia os ICE Candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          socketRef.current.emit('webrtc-signal', { code, signal: event.candidate });
+          socketRef.current.emit('webrtc-signal', { code: codeRef.current, signal: event.candidate });
         }
       };
 
       // Cria a oferta P2P
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      socketRef.current.emit('webrtc-signal', { code, signal: offer });
+      socketRef.current.emit('webrtc-signal', { code: codeRef.current, signal: offer });
 
     } catch (e) {
       console.error("Erro ao capturar tela", e);
